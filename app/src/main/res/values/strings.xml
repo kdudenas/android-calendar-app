@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">CalendarApp</string>
+    <string name="action_settings">Settings</string>
+    <string name="section_format">Hello World from section: %1$d</string>
+    <string name="action_month">Month</string>
+    <string name="action_dayOfMonth">Day</string>
+</resources>

@@ -1,0 +1,20 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="cs407_android.com.calendarapp.MainActivity">
+
+    <item
+        android:id="@+id/action_month"
+        android:orderInCategory="1"
+        android:title="@string/action_month"
+        app:showAsAction="always" />
+
+    <item
+        android:id="@+id/action_dayOfMonth"
+        android:orderInCategory="2"
+        android:title="@string/action_dayOfMonth"
+        app:showAsAction="always" />
+
+    <!-- KAD maybe have additional options here to add event-->
+
+</menu>
