@@ -1,11 +1,13 @@
 package cs407_android.com.calendarapp;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
@@ -29,10 +31,15 @@ import android.view.ViewGroup;
 
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity
+      implements OnDayPageOpenedListener
+{
+    static final int ADD_EVENT_REQUEST = 1;  // The request code
+
     //ORM variables;
     DaoMaster.DevOpenHelper calendarDBHelper;
     SQLiteDatabase calendarDB;
@@ -40,10 +47,17 @@ public class MainActivity extends AppCompatActivity {
     DaoSession daoSession;
     EventDao guestDao;
     List<Event> eventListFromDB;
-    ArrayAdapter<Event> eventListAdapter;
+    private ArrayAdapter<Event> eventListAdapter;
     public static ArrayList<Event> eventList;
     //List<Event> dayEventListFromDB;
     //ArrayAdapter dayEventListAdapter;
+
+    public ArrayAdapter getEventListAdapter(){
+        if (eventListAdapter == null){
+            return new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, eventList);
+        }
+        else return eventListAdapter;
+    }
 
     //Date variables
     static Calendar calendar = Calendar.getInstance();
@@ -74,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
     static public String getMonthStr(){
         return months.get(currMonth);
     }
-    static public void setup() {
+    public void setup() {
         months.put(Calendar.JANUARY, "January"); //KAD TODO make string values
         months.put(Calendar.FEBRUARY, "February");
         months.put(Calendar.MARCH, "March");
@@ -99,6 +113,13 @@ public class MainActivity extends AppCompatActivity {
         //  System.out.println("Today is " + weekdays.get(currDayOfWeek) + "Month: " + months.get(currMonth) + "Day: " + currDayOfMonth );
 
         //add activity
+        Random rng = new Random();
+        //int month = rng.nextInt(27) + 1;
+        int month = Calendar.MARCH;
+        int day = rng.nextInt(28) + 1;
+        int hour = rng.nextInt(24) + 1;
+        int minute = rng.nextInt(60) + 1;
+        saveEvent("Lunch", month, day, hour, minute, "Eat something healthy today!");
 
 
     }
@@ -110,17 +131,19 @@ public class MainActivity extends AppCompatActivity {
         //reset calendar
         calendar.add(Calendar.DAY_OF_MONTH, -numDaysToAdd);
     }
-
+////////////////////////////////////////////////////////////////////////////////////////////////////
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setup();
-        setContentView(R.layout.activity_main);
 
         //instantiate objects
         context = this;
         eventList= new ArrayList<>();
-        eventListAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, eventList);
+        eventListAdapter = getEventListAdapter();
+
+        initDatabase(); //setup
+        setup();
+        setContentView(R.layout.activity_main);
 
         // Set up toolbar
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -140,19 +163,29 @@ public class MainActivity extends AppCompatActivity {
               addActivityBtnPressed();
             }
         });
-
-        initDatabase(); //KAD 1.
         eventListAdapter.notifyDataSetChanged();
-
-
-
     }
 
     public void addActivityBtnPressed(){
-       // Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG) //KAD make "add event" button TODO
-//                        .setAction("Action", null).show();
         Intent addEventIntent = new Intent(this, AddEventActivity.class);
-        startActivity(addEventIntent);
+        startActivityForResult(addEventIntent, ADD_EVENT_REQUEST);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        // Check which request we're responding to
+        if (requestCode == ADD_EVENT_REQUEST) {
+            // Make sure the request was successful
+            if (resultCode == RESULT_OK) {
+                // The user added an event.
+                String[] fields = data.getStringArrayExtra("eventFieldsList");
+
+                saveEvent(fields[0],Integer.valueOf(fields[1]),
+                        Integer.valueOf(fields[2]), Integer.valueOf(fields[3]),
+                        Integer.valueOf(fields[4]), fields[5]); //KAD TODO idk
+
+            }
+        }
     }
 
     @Override
@@ -187,48 +220,9 @@ public class MainActivity extends AppCompatActivity {
 
         return super.onOptionsItemSelected(item);
     }
-
-    /**
-     * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
-     * one of the sections/tabs/pages.
-     */
-    public class SectionsPagerAdapter extends FragmentPagerAdapter {
-
-        public SectionsPagerAdapter(FragmentManager fm) {
-            super(fm);
-        }
-
-        @Override
-        public Fragment getItem(int offset) {
-            // getItem is called to instantiate the fragment for the given page - the next day
-            // Return a DayFragment
-            return DayViewFragment.newInstance(offset + 1);
-        }
-
-        @Override
-        public int getCount() {
-            // Show 365 total pages - one year. TODO idk
-            return 365;
-        }
-
-        @Override
-        public CharSequence getPageTitle(int position) { //TODO prolly can use this
-            switch (position) {
-                case 0:
-                    return "SECTION 1";
-                case 1:
-                    return "SECTION 2";
-                case 2:
-                    return "SECTION 3";
-            }
-            return null;
-        }
-    }
-
-/*Database helper methods*/
-
-    private void initDatabase()
-    {
+////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*Database helper methods*/
+    private void initDatabase() {
         calendarDBHelper = new DaoMaster.DevOpenHelper(this, "ORM.sqlite", null);
         calendarDB = calendarDBHelper.getWritableDatabase();
 
@@ -275,14 +269,13 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void saveGuest()
-    {
+    public void saveEvent(String title, Integer month, Integer dayOfMonth, Integer startHour,
+                          Integer startMinute, String description){
         //Generate random Id for Event object to place in database
         Random rand = new Random();
 
-        //Create Event instance using data from MainActivity
-        //Use rand.nextLong() for Guest object Id
-        Event newEvent = new Event(rand.nextLong());
+        //Create Event instance using provided data
+        Event newEvent = new Event(rand.nextLong(), title, month, dayOfMonth, startHour, startMinute, description, true);
 
         //Insert Event instance into guestDao
         guestDao.insert(newEvent);
@@ -291,15 +284,13 @@ public class MainActivity extends AppCompatActivity {
         closeReopenDatabase();
     }
 
-    private void closeDatabase()
-    {
+    private void closeDatabase() {
         daoSession.clear();
         calendarDB.close();
         calendarDBHelper.close();
     }
 
-    private void closeReopenDatabase()
-    {
+    private void closeReopenDatabase() {
         closeDatabase();
 
         calendarDBHelper = new DaoMaster.DevOpenHelper(this, "ORM.sqlite", null);
@@ -344,15 +335,86 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    @Override
+    public ArrayAdapter OnListViewed() {
+        //adapter = eventListAdapter;
+        return eventListAdapter;
+        //lv.setAdapter(eventListAdapter);
+        //System.out.println("hooray");
+    }
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+    /**
+     * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
+     * one of the sections/tabs/pages.
+     */
+    public class SectionsPagerAdapter extends FragmentPagerAdapter {
+
+        public SectionsPagerAdapter(FragmentManager fm) {
+            super(fm);
+        }
+
+        @Override
+        public Fragment getItem(int offset) {
+            // getItem is called to instantiate the fragment for the given page - the next day
+            // Return a DayFragment
+            return DayViewFragment.newInstance(offset + 1);
+        }
+
+        @Override
+        public int getCount() {
+            // Show 365 total pages - one year. TODO idk
+            return 365;
+        }
+
+        @Override
+        public CharSequence getPageTitle(int position) { //TODO prolly can use this
+            switch (position) {
+                case 0:
+                    return "SECTION 1";
+                case 1:
+                    return "SECTION 2";
+                case 2:
+                    return "SECTION 3";
+            }
+            return null;
+        }
+    }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
     /**
      * A fragment that displays a list of one day's events.
      */
     public static class DayViewFragment extends Fragment {
-        /**
+
+        OnDayPageOpenedListener mCallback;
+
+        @Override
+        public void onAttach(Context context) {
+            super.onAttach(context);
+            /*This makes sure that the container activity has implemented the callback interface. If not, it throws an exception */
+            try {
+                mCallback = (OnDayPageOpenedListener) context;
+            } catch (ClassCastException e) {
+                throw new ClassCastException(context.toString()
+                        + " must implement OnDayPageOpenedListener");
+            }
+        }
+
+        @Override
+        public void onDetach() {
+            super.onDetach();
+            mCallback = null;
+        }
+
+         /**
          * Each fragment has an offset from the current day's Month and Date
          */
         private static final String ARG_SECTION_NUMBER = "section number";
+        //KAD try
+        ArrayAdapter tryAdapter;
+        private static final String ARG_LIST_ADAPTER = "list adapter";
+        //
         private int section_number;
 
         public DayViewFragment() {
@@ -369,6 +431,7 @@ public class MainActivity extends AppCompatActivity {
 //            args.putInt(ARG_CURR_DAY_OF_MONTH, dayOfMonth);
 //            args.putInt(ARG_CURR_DAY_OF_WEEK, dayOfWeek);
             args.putInt(ARG_SECTION_NUMBER, sectionNumber);
+//            args.putSerializable(ARG_LIST_ADAPTER, adapter);
             fragment.setArguments(args);
             return fragment;
         }
@@ -376,10 +439,17 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
-            if (getArguments() != null) {
+
+                  if (getArguments() != null) {
                 section_number = getArguments().getInt(ARG_SECTION_NUMBER);
+                //tryAdapter = getArguments().get
             }
         }
+
+
+//    public ArrayAdapter getTryArrayAdapter() {
+//        return (ArrayAdapter) getArguments().getSerializable(FRAGMENT_BUNDLE_KEY);
+//    }
 
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -388,13 +458,25 @@ public class MainActivity extends AppCompatActivity {
 
             MainActivity act = (MainActivity)getActivity().getParent();
             //update date:
-            Log.println(1, "*", "section number is: " + section_number);
+            Log.println(1, "*", "section number is: " + section_number); //TODO remove
             act.updateCalendar(section_number);
 
 
             View rootView = inflater.inflate(R.layout.fragment_main, container, false);
             TextView textView = (TextView) rootView.findViewById(R.id.section_label);
             textView.setText("Events for " + getDayOfWeekStr() + ", " + getMonthStr() + " " + currDayOfMonth);
+
+            ListView eventListView = (ListView) rootView.findViewById(R.id.eventListView);
+            //KAD ahhhhhhhhhhhhhhhhh
+            tryAdapter = mCallback.OnListViewed();
+
+//KAD ahhhhhhhhhhh
+            eventListView.setAdapter(tryAdapter);
+            tryAdapter.notifyDataSetChanged();
+
+
+
+
             return rootView;
         }
     }

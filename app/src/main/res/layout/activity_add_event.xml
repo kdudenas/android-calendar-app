@@ -23,8 +23,10 @@
         android:id="@+id/eventTitleField"
         android:layout_below="@+id/textView"
         android:layout_centerHorizontal="true"
-        android:hint="Event Title" />
+        android:hint="Event Title"
+        android:inputType="textCapWords" />
 
+    <!--
     <LinearLayout
         android:orientation="horizontal"
         android:layout_width="wrap_content"
@@ -50,7 +52,19 @@
             android:layout_alignTop="@+id/eventMonthField"
             android:layout_toEndOf="@+id/eventMonthField"
             android:inputType="textCapSentences|number" />
+
     </LinearLayout>
+    -->
+
+    <EditText
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:inputType="date"
+        android:ems="10"
+        android:id="@+id/eventDateField"
+        android:hint="Enter date ex 05/12"
+        android:layout_below="@+id/eventTitleField"
+        android:layout_alignStart="@+id/eventTimeField" />
 
     <EditText
         android:layout_width="wrap_content"
@@ -58,7 +72,7 @@
         android:inputType="time"
         android:ems="10"
         android:id="@+id/eventTimeField"
-        android:hint="Event Time"
+        android:hint="Event Time ex 12:30"
         android:layout_marginTop="55dp"
         android:layout_below="@+id/eventTitleField"
         android:layout_centerHorizontal="true" />
@@ -79,7 +93,6 @@
         android:text="Submit"
         android:id="@+id/submitEventBtn"
         android:layout_below="@+id/eventDescriptionField"
-        android:layout_centerHorizontal="true"
-        android:onClick="submitEventBtnPressed" />
+        android:layout_centerHorizontal="true" />
 
 </RelativeLayout>
