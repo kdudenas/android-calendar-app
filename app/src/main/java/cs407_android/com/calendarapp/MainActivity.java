@@ -1,5 +1,8 @@
 package cs407_android.com.calendarapp;
 
+import java.util.Calendar;
+import java.util.HashMap;
+
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -19,6 +22,45 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 public class MainActivity extends AppCompatActivity {
+    //Date variables
+    static Calendar calendar = Calendar.getInstance();
+    static int currMonth = calendar.get(Calendar.MONTH);
+    static int currDayOfMonth = calendar.get(Calendar.DAY_OF_MONTH);
+    static int currDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
+    static HashMap<Integer, String> months = new HashMap<Integer, String>();
+    static HashMap<Integer, String> weekdays = new HashMap<Integer, String>();
+    static public String getDayOfWeekStr(){
+        return weekdays.get(currDayOfWeek);
+    }
+
+    static public String getMonthStr(){
+        return months.get(currMonth);
+    }
+    static public void setup() {
+        months.put(Calendar.JANUARY, "January"); //KAD TODO make string values
+        months.put(Calendar.FEBRUARY, "February");
+        months.put(Calendar.MARCH, "March");
+        months.put(Calendar.APRIL, "April");
+        months.put(Calendar.MAY, "May");
+        months.put(Calendar.JUNE, "June");
+        months.put(Calendar.JULY, "July");
+        months.put(Calendar.AUGUST, "August");
+        months.put(Calendar.SEPTEMBER, "September");
+        months.put(Calendar.OCTOBER, "October");
+        months.put(Calendar.NOVEMBER, "November");
+        months.put(Calendar.DECEMBER, "December");
+
+        weekdays.put(Calendar.SUNDAY, "Sunday");
+        weekdays.put(Calendar.MONDAY, "Monday");
+        weekdays.put(Calendar.TUESDAY, "Tuesday");
+        weekdays.put(Calendar.WEDNESDAY, "Wednesday");
+        weekdays.put(Calendar.MONDAY, "Thursday");
+        weekdays.put(Calendar.FRIDAY, "Friday");
+        weekdays.put(Calendar.SATURDAY, "Saturday");
+
+        //  System.out.println("Today is " + weekdays.get(currDayOfWeek) + "Month: " + months.get(currMonth) + "Day: " + currDayOfMonth );
+
+    }
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -38,6 +80,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setup();
         setContentView(R.layout.activity_main);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -62,11 +105,16 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present. //KAD top action bar: month day
         getMenuInflater().inflate(R.menu.menu_main, menu);
+        MenuItem month = menu.findItem(R.id.action_month);
+        month.setTitle(getMonthStr());
+        MenuItem weekday = menu.findItem(R.id.action_dayOfWeek);
+        weekday.setTitle(getDayOfWeekStr());
+        MenuItem dayOfMonth = menu.findItem(R.id.action_dayOfMonth);
+        dayOfMonth.setTitle("" + currDayOfMonth);
         return true;
     }
 
@@ -94,10 +142,13 @@ public class MainActivity extends AppCompatActivity {
      */
     public static class DayViewFragment extends Fragment {
         /**
-         * The fragment argument representing the section number for this
-         * fragment.
+         * Each fragment has the current day's Month and Date
          */
-        private static final String ARG_SECTION_NUMBER = "section_number";
+//        private static final String ARG_CURR_MONTH = "month";
+//        private static final String ARG_CURR_DAY_OF_MONTH= "dayOfMonth";
+//        private static final String ARG_CURR_DAY_OF_WEEK= "dayOfWeek";
+
+        private static final String ARG_SECTION_NUMBER = "section number";
 
         public DayViewFragment() {
         }
@@ -109,6 +160,9 @@ public class MainActivity extends AppCompatActivity {
         public static DayViewFragment newInstance(int sectionNumber) {
             DayViewFragment fragment = new DayViewFragment();
             Bundle args = new Bundle();
+//            args.putInt(ARG_CURR_MONTH, month);
+//            args.putInt(ARG_CURR_DAY_OF_MONTH, dayOfMonth);
+//            args.putInt(ARG_CURR_DAY_OF_WEEK, dayOfWeek);
             args.putInt(ARG_SECTION_NUMBER, sectionNumber);
             fragment.setArguments(args);
             return fragment;
@@ -117,9 +171,15 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                  Bundle savedInstanceState) {
+
+
+            //update date: KAD TODO important idk move this
+            calendar.add(Calendar.DAY_OF_MONTH, 1);
+
+
             View rootView = inflater.inflate(R.layout.fragment_main, container, false);
             TextView textView = (TextView) rootView.findViewById(R.id.section_label);
-            textView.setText(getString(R.string.section_format, getArguments().getInt(ARG_SECTION_NUMBER)));
+            textView.setText("Events for " + getDayOfWeekStr() + ", " + getMonthStr() + " " + currDayOfMonth);
             return rootView;
         }
     }
@@ -135,20 +195,20 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public Fragment getItem(int position) {
-            // getItem is called to instantiate the fragment for the given page.
-            // Return a PlaceholderFragment (defined as a static inner class below).
-            return DayViewFragment.newInstance(position + 1);
+        public Fragment getItem(int offset) {
+            // getItem is called to instantiate the fragment for the given page - the next day
+            // Return a DayFragment
+            return DayViewFragment.newInstance(offset + 1);
         }
 
         @Override
         public int getCount() {
-            // Show 3 total pages.
-            return 3;
+            // Show 365 total pages - one year.
+            return 365;
         }
 
         @Override
-        public CharSequence getPageTitle(int position) {
+        public CharSequence getPageTitle(int position) { //TODO prolly can use this
             switch (position) {
                 case 0:
                     return "SECTION 1";

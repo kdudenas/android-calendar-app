@@ -4,14 +4,19 @@
     tools:context="cs407_android.com.calendarapp.MainActivity">
 
     <item
-        android:id="@+id/action_month"
+        android:id="@+id/action_dayOfWeek"
         android:orderInCategory="1"
+        android:title="@string/action_dayOfWeek"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_month"
+        android:orderInCategory="2"
         android:title="@string/action_month"
         app:showAsAction="always" />
 
     <item
         android:id="@+id/action_dayOfMonth"
-        android:orderInCategory="2"
+        android:orderInCategory="3"
         android:title="@string/action_dayOfMonth"
         app:showAsAction="always" />
 
