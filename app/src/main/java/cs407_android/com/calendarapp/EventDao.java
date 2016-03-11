@@ -88,9 +88,9 @@ public class EventDao extends AbstractDao<Event, Long> {
             stmt.bindLong(5, startHour);
         }
  
-        java.util.Date startMinute = entity.getStartMinute();
+        Integer startMinute = entity.getStartMinute();
         if (startMinute != null) {
-            stmt.bindLong(6, startMinute.getTime());
+            stmt.bindLong(6, startMinute);
         }
  
         String description = entity.getDescription();
@@ -119,7 +119,7 @@ public class EventDao extends AbstractDao<Event, Long> {
             cursor.isNull(offset + 2) ? null : cursor.getInt(offset + 2), // month
             cursor.isNull(offset + 3) ? null : cursor.getInt(offset + 3), // dayOfMonth
             cursor.isNull(offset + 4) ? null : cursor.getInt(offset + 4), // startHour
-            cursor.isNull(offset + 5) ? null : new java.util.Date(cursor.getLong(offset + 5)), // startMinute
+            cursor.isNull(offset + 5) ? null : cursor.getInt(offset + 5), // startMinute
             cursor.isNull(offset + 6) ? null : cursor.getString(offset + 6), // description
             cursor.isNull(offset + 7) ? null : cursor.getShort(offset + 7) != 0 // display
         );
@@ -134,7 +134,7 @@ public class EventDao extends AbstractDao<Event, Long> {
         entity.setMonth(cursor.isNull(offset + 2) ? null : cursor.getInt(offset + 2));
         entity.setDayOfMonth(cursor.isNull(offset + 3) ? null : cursor.getInt(offset + 3));
         entity.setStartHour(cursor.isNull(offset + 4) ? null : cursor.getInt(offset + 4));
-        entity.setStartMinute(cursor.isNull(offset + 5) ? null : new java.util.Date(cursor.getLong(offset + 5)));
+        entity.setStartMinute(cursor.isNull(offset + 5) ? null : cursor.getInt(offset + 5));
         entity.setDescription(cursor.isNull(offset + 6) ? null : cursor.getString(offset + 6));
         entity.setDisplay(cursor.isNull(offset + 7) ? null : cursor.getShort(offset + 7) != 0);
      }

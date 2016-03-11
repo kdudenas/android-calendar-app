@@ -54,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
         weekdays.put(Calendar.MONDAY, "Monday");
         weekdays.put(Calendar.TUESDAY, "Tuesday");
         weekdays.put(Calendar.WEDNESDAY, "Wednesday");
-        weekdays.put(Calendar.MONDAY, "Thursday");
+        weekdays.put(Calendar.THURSDAY, "Thursday");
         weekdays.put(Calendar.FRIDAY, "Friday");
         weekdays.put(Calendar.SATURDAY, "Saturday");
 
