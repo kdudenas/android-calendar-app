@@ -1,9 +1,14 @@
 package cs407_android.com.calendarapp;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Random;
 
+import android.content.Context;
 import android.content.Intent;
+import android.database.sqlite.SQLiteDatabase;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ListFragment;
@@ -22,9 +27,24 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 
+import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
+    //ORM variables;
+    DaoMaster.DevOpenHelper calendarDBHelper;
+    SQLiteDatabase calendarDB;
+    DaoMaster daoMaster;
+    DaoSession daoSession;
+    EventDao guestDao;
+    List<Event> eventListFromDB;
+    ArrayAdapter<Event> eventListAdapter;
+    public static ArrayList<Event> eventList;
+    //List<Event> dayEventListFromDB;
+    //ArrayAdapter dayEventListAdapter;
+
     //Date variables
     static Calendar calendar = Calendar.getInstance();
     static int currMonth = calendar.get(Calendar.MONTH);
@@ -45,6 +65,7 @@ public class MainActivity extends AppCompatActivity {
     private ViewPager mViewPager; /**
      * The {@link ViewPager} that will host the section contents.
      */
+    Context context;
 
    //helper methods
     static public String getDayOfWeekStr(){
@@ -77,6 +98,9 @@ public class MainActivity extends AppCompatActivity {
 
         //  System.out.println("Today is " + weekdays.get(currDayOfWeek) + "Month: " + months.get(currMonth) + "Day: " + currDayOfMonth );
 
+        //add activity
+
+
     }
     static public void updateCalendar(int numDaysToAdd){
         calendar.add(Calendar.DAY_OF_MONTH, numDaysToAdd);
@@ -93,16 +117,22 @@ public class MainActivity extends AppCompatActivity {
         setup();
         setContentView(R.layout.activity_main);
 
+        //instantiate objects
+        context = this;
+        eventList= new ArrayList<>();
+        eventListAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, eventList);
+
+        // Set up toolbar
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
         // Create the adapter that will return a fragment for each section of the activity.
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
-
         // Set up the ViewPager with the sections adapter.
         mViewPager = (ViewPager) findViewById(R.id.container);
         mViewPager.setAdapter(mSectionsPagerAdapter);
 
+        // Set up "add event" floating button
         FloatingActionButton addEventButton = (FloatingActionButton) findViewById(R.id.addItemBtn);
         addEventButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -110,6 +140,11 @@ public class MainActivity extends AppCompatActivity {
               addActivityBtnPressed();
             }
         });
+
+        initDatabase(); //KAD 1.
+        eventListAdapter.notifyDataSetChanged();
+
+
 
     }
 
@@ -190,6 +225,99 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+/*Database helper methods*/
+
+    private void initDatabase()
+    {
+        calendarDBHelper = new DaoMaster.DevOpenHelper(this, "ORM.sqlite", null);
+        calendarDB = calendarDBHelper.getWritableDatabase();
+
+        //Get DaoMaster
+        daoMaster = new DaoMaster(calendarDB);
+
+        //Create database and tables if non existent
+        daoMaster.createAllTables(calendarDB, true);
+
+        //Create DaoSession instance
+        daoSession = daoMaster.newSession();
+
+        //From DaoSession instance, get instance of GuestDao
+        guestDao = daoSession.getEventDao();
+
+        if (guestDao.queryBuilder().where(
+                EventDao.Properties.Display.eq(true)).list() == null)
+        {
+            //If list is null, then database tables were created for first time in
+            // previous lines, so call "closeReopenDatabase()"
+            closeReopenDatabase();
+        }
+        //Get list of Guest objects in database using QueryBuilder
+        //HINT: All instances of Guest objects will have their Display property set equal to true
+        eventListFromDB = guestDao.queryBuilder().where(
+                EventDao.Properties.Display.eq(true)).list();
+
+        //Add all Guest objects from List to guestList ArrayList and use
+        //(cont.) "adapter.notifyDataSetChanged()" to update list
+        if (eventListFromDB != null) {
+
+            for (Event event : eventListFromDB)
+            {
+                if (event == null)
+                {
+                    return;
+                }
+                Toast.makeText(context, "Added Guests from Database", Toast.LENGTH_SHORT).show();
+                eventList.add(event);
+            }
+            eventListAdapter.notifyDataSetChanged();
+        }
+
+
+    }
+
+    private void saveGuest()
+    {
+        //Generate random Id for Event object to place in database
+        Random rand = new Random();
+
+        //Create Event instance using data from MainActivity
+        //Use rand.nextLong() for Guest object Id
+        Event newEvent = new Event(rand.nextLong());
+
+        //Insert Event instance into guestDao
+        guestDao.insert(newEvent);
+
+        //Close and reopen database to ensure Guest object is saved
+        closeReopenDatabase();
+    }
+
+    private void closeDatabase()
+    {
+        daoSession.clear();
+        calendarDB.close();
+        calendarDBHelper.close();
+    }
+
+    private void closeReopenDatabase()
+    {
+        closeDatabase();
+
+        calendarDBHelper = new DaoMaster.DevOpenHelper(this, "ORM.sqlite", null);
+        calendarDB = calendarDBHelper.getWritableDatabase();
+
+        //Get DaoMaster
+        daoMaster = new DaoMaster(calendarDB);
+
+        //Create database and tables
+        daoMaster.createAllTables(calendarDB, true);
+
+        //Create DaoSession
+        daoSession = daoMaster.newSession();
+
+        //Create customer addition/removal instances
+        guestDao = daoSession.getEventDao();
+
+    }
 
     public void getEventsByDay(){
 //        listView.setAdapter(dudeAdapter);
@@ -216,7 +344,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-//////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
     /**
      * A fragment that displays a list of one day's events.
      */

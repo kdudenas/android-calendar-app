@@ -97,4 +97,8 @@ public class Event {
         this.display = display;
     }
 
+    @Override
+    public String toString(){
+        return String.format("%02d:%02d",startHour, startMinute) + " " + title;
+    }
 }
