@@ -1,6 +1,5 @@
 package cs407_android.com.calendarapp;
 
-
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
@@ -11,8 +10,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
-import android.support.v4.app.ListFragment;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 
@@ -21,7 +18,6 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -30,10 +26,8 @@ import android.view.ViewGroup;
 
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity
         implements OnDayPageOpenedListener
@@ -50,9 +44,6 @@ public class MainActivity extends AppCompatActivity
     List<Event> eventListFromDB;
     private ArrayAdapter<Event> eventListAdapter;
     public static ArrayList<Event> eventList;
-    List<Event> dayEventListFromDB;
-    ArrayAdapter dayEventListAdapter;
-
 
     public ArrayAdapter getEventListAdapter(){
         if (eventListAdapter == null){
@@ -66,6 +57,9 @@ public class MainActivity extends AppCompatActivity
     static int currMonth = calendar.get(Calendar.MONTH);
     static int currDayOfMonth = calendar.get(Calendar.DAY_OF_MONTH);
     static int currDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
+    static int todayMonth = calendar.get(Calendar.MONTH);
+    static int todayDayOfMonth = calendar.get(Calendar.DAY_OF_MONTH);
+    static int todayDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
     static HashMap<Integer, String> months = new HashMap<Integer, String>();
     static HashMap<Integer, String> weekdays = new HashMap<Integer, String>();
 
@@ -84,14 +78,14 @@ public class MainActivity extends AppCompatActivity
     Context context;
 
     //helper methods
-    static public String getDayOfWeekStr(){
+    static public String getDayOfWeekStr(int currDayOfWeek){
         return weekdays.get(currDayOfWeek);
     }
-    static public String getMonthStr(){
+    static public String getMonthStr(int currMonth){
         return months.get(currMonth);
     }
     public void setup() {
-        updateCalendar(-2); //set cal back a day so it displays today's date
+       // updateCalendar(-2); //set cal back a day so it displays today's date
         months.put(Calendar.JANUARY, "January"); //KAD TODO make string values
         months.put(Calendar.FEBRUARY, "February");
         months.put(Calendar.MARCH, "March");
@@ -113,7 +107,7 @@ public class MainActivity extends AppCompatActivity
         weekdays.put(Calendar.FRIDAY, "Friday");
         weekdays.put(Calendar.SATURDAY, "Saturday");
 
-        //addRandomActivity();
+        addRandomActivity();
     }
 
     private void addRandomActivity() {
@@ -121,13 +115,16 @@ public class MainActivity extends AppCompatActivity
         String[] names = {"Alice", "Bob", "Cindy", "Dale", "Fred", "George", "Hannah"};
 
         Random rng = new Random();
-        int month = rng.nextInt(11) + 1;
+        //int month = rng.nextInt(11) + 1;
         //int month = Calendar.MARCH;
-        int day = rng.nextInt(28) + 1;
+        int month = currMonth;
+        //int day = rng.nextInt(28) + 1;
+        int day = currDayOfMonth;
         //int hour = rng.nextInt(24) + 1;
         int hour = 13;
         int minute = rng.nextInt(60) + 1;
-        saveEvent("Meeting with " + names[rng.nextInt(names.length)], month, day, hour, minute, "Gonna be a good time!");
+        //saveEvent("Meeting with " + names[rng.nextInt(names.length)], month, day, hour, minute, "Gonna be a good time!");
+        saveEvent("Test*", month, day, hour, minute, "Gonna be a good time!");
         eventListAdapter.notifyDataSetChanged();
     }
 
@@ -215,7 +212,7 @@ public class MainActivity extends AppCompatActivity
     private void deleteEvent(Long eventToDeleteId) {
         //update list:
         boolean result = eventList.remove(new Event(eventToDeleteId)); //KAD this is hacky
-        System.out.println("Did we remove?? -- " + result);
+      //  System.out.println("Did we remove?? -- " + result);
 
         //Delete Event instance from eventDao
         eventDao.deleteByKey(eventToDeleteId);
@@ -230,11 +227,11 @@ public class MainActivity extends AppCompatActivity
         getMenuInflater().inflate(R.menu.menu_main, menu);
 
         MenuItem month = menu.findItem(R.id.action_month);
-        month.setTitle(getMonthStr());
+        month.setTitle(getMonthStr(todayMonth));
         MenuItem weekday = menu.findItem(R.id.action_dayOfWeek);
-        weekday.setTitle(getDayOfWeekStr());
+        weekday.setTitle(getDayOfWeekStr(todayDayOfWeek));
         MenuItem dayOfMonth = menu.findItem(R.id.action_dayOfMonth);
-        dayOfMonth.setTitle("" + currDayOfMonth);
+        dayOfMonth.setTitle("" + todayDayOfMonth);
         return true;
     }
 
@@ -281,22 +278,28 @@ public class MainActivity extends AppCompatActivity
             // previous lines, so call "closeReopenDatabase()"
             closeReopenDatabase();
         }
-        //Get list of Event objects in database using QueryBuilder
+        //Get list of today's Event objects in database using QueryBuilder
         //HINT: All instances of Event objects will have their Display property set equal to true
-        eventListFromDB = eventDao.queryBuilder().where(
-                EventDao.Properties.Display.eq(true)).orderAsc(EventDao.Properties.StartHour).orderAsc(EventDao.Properties.StartMinute).list();
+        eventListFromDB = eventDao.queryBuilder()
+                .where(eventDao.queryBuilder()
+                        .and(
+                                EventDao.Properties.Month.eq(currMonth),
+                        EventDao.Properties.DayOfMonth.eq(currDayOfMonth)))
+                .orderAsc(EventDao.Properties.StartHour)
+                        .orderAsc(EventDao.Properties.StartMinute).list();
+
+//                .where(EventDao.Properties.Display.eq(true))
+//                .orderAsc(EventDao.Properties.StartHour)
+//                .orderAsc(EventDao.Properties.StartMinute).list();
+
+
 
         //Add all Guest objects from List to guestList ArrayList and use
         //(cont.) "adapter.notifyDataSetChanged()" to update list
         if (eventListFromDB != null) {
 
-            for (Event event : eventListFromDB)
-            {
-                if (event == null)
-                {
-                    return;
-                }
-                //Toast.makeText(context, "Getting events from database...", Toast.LENGTH_SHORT).show();
+            for (Event event : eventListFromDB) {
+                if (event == null) { return; }
                 eventList.add(event);
             }
             eventListAdapter.notifyDataSetChanged();
@@ -346,28 +349,7 @@ public class MainActivity extends AppCompatActivity
     }
 
 //    public void getEventsByDay(){
-//        listView.setAdapter(dudeAdapter);
-//        //Get list of Guest objects in database using QueryBuilder
-//        //HINT: All instances of Guest objects will have their Display property set equal to true
-//        dudeListFromDB = EventDao.queryBuilder().where(
-//                EventDao.Properties.DayOfMonth.eq(currDayOfMonth)).list();
-//
-//        //Add all Guest objects from List to guestList ArrayList and use
-//        //(cont.) "adapter.notifyDataSetChanged()" to update list
-//        if (dudeListFromDB != null) {
-//
-//            for (Guest guest : dudeListFromDB)
-//            {
-//                if (guest == null)
-//                {
-//                    return;
-//                }
-//              //  Toast.makeText(context, "Added Dudes from Database", Toast.LENGTH_SHORT).show();
-//                dudeList.add(guest.getFirstName() + " " + guest.getLastName());
-//            }
-//            dudeAdapter.notifyDataSetChanged();
-//        }
-//    }
+//}
 
     @Override
     public ArrayAdapter OnListViewed() {
@@ -387,7 +369,7 @@ public class MainActivity extends AppCompatActivity
         //Give event page nicely formatted strings for title, date, time, and description
         String[] displayStrings = {
                 eventClicked.getTitle(),
-                getDayOfWeekStr() + " " + getMonthStr() + " " + eventClicked.getDayOfMonth(),
+                getDayOfWeekStr(currDayOfWeek) + " " + getMonthStr(currMonth) + " " + eventClicked.getDayOfMonth(),
                 String.format("%02d:%02d", eventClicked.getStartHour(),eventClicked.getStartMinute()),
                 eventClicked.getDescription()};
         intent.putExtra("displayStrings", displayStrings);
@@ -482,7 +464,6 @@ public class MainActivity extends AppCompatActivity
 //            args.putInt(ARG_CURR_DAY_OF_MONTH, dayOfMonth);
 //            args.putInt(ARG_CURR_DAY_OF_WEEK, dayOfWeek);
             args.putInt(ARG_SECTION_NUMBER, sectionNumber);
-//            args.putSerializable(ARG_LIST_ADAPTER, adapter);
             fragment.setArguments(args);
             return fragment;
         }
@@ -509,7 +490,7 @@ public class MainActivity extends AppCompatActivity
 
             View rootView = inflater.inflate(R.layout.fragment_main, container, false);
             TextView textView = (TextView) rootView.findViewById(R.id.section_label);
-            textView.setText("Events for " + getDayOfWeekStr() + ", " + getMonthStr() + " " + currDayOfMonth);
+            textView.setText("Events for " + getDayOfWeekStr(currDayOfWeek) + ", " + getMonthStr(currMonth) + " " + currDayOfMonth);
 
             eventListView = (ListView) rootView.findViewById(R.id.eventListView);
             tryAdapter = mCallback.OnListViewed();
