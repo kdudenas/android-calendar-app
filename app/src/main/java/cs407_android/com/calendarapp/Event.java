@@ -101,4 +101,16 @@ public class Event {
     public String toString(){
         return String.format("%02d:%02d",startHour, startMinute) + " " + title;
     }
+
+    @Override
+    public boolean equals(Object O){
+        if(O instanceof Event){
+            System.out.print("comparing Events..");
+            System.out.println(" id1 = " + ((Event) O).getId() + "id2 = " + this.id);
+            if (((Event) O).getId().equals(this.id)){
+                return true;
+            }
+        }
+        return false;
+    }
 }

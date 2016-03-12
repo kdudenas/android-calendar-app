@@ -1,13 +1,12 @@
 package cs407_android.com.calendarapp;
 
-import java.lang.reflect.Array;
+
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
@@ -29,6 +28,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
@@ -36,21 +36,23 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity
-      implements OnDayPageOpenedListener
+        implements OnDayPageOpenedListener
 {
     static final int ADD_EVENT_REQUEST = 1;  // The request code
+    static final int DELETE_EVENT_REQUEST = 2;  // The request code
 
     //ORM variables;
     DaoMaster.DevOpenHelper calendarDBHelper;
     SQLiteDatabase calendarDB;
     DaoMaster daoMaster;
     DaoSession daoSession;
-    EventDao guestDao;
+    EventDao eventDao;
     List<Event> eventListFromDB;
     private ArrayAdapter<Event> eventListAdapter;
     public static ArrayList<Event> eventList;
-    //List<Event> dayEventListFromDB;
-    //ArrayAdapter dayEventListAdapter;
+    List<Event> dayEventListFromDB;
+    ArrayAdapter dayEventListAdapter;
+
 
     public ArrayAdapter getEventListAdapter(){
         if (eventListAdapter == null){
@@ -69,19 +71,19 @@ public class MainActivity extends AppCompatActivity
 
     //Tab variables
     private SectionsPagerAdapter mSectionsPagerAdapter; /**
-     * The {@link android.support.v4.view.PagerAdapter} that will provide
-     * fragments for each of the sections. We use a
-     * {@link FragmentPagerAdapter} derivative, which will keep every
-     * loaded fragment in memory. If this becomes too memory intensive, it
-     * may be best to switch to a
-     * {@link android.support.v4.app.FragmentStatePagerAdapter}.
-     */
+ * The {@link android.support.v4.view.PagerAdapter} that will provide
+ * fragments for each of the sections. We use a
+ * {@link FragmentPagerAdapter} derivative, which will keep every
+ * loaded fragment in memory. If this becomes too memory intensive, it
+ * may be best to switch to a
+ * {@link android.support.v4.app.FragmentStatePagerAdapter}.
+ */
     private ViewPager mViewPager; /**
-     * The {@link ViewPager} that will host the section contents.
-     */
+ * The {@link ViewPager} that will host the section contents.
+ */
     Context context;
 
-   //helper methods
+    //helper methods
     static public String getDayOfWeekStr(){
         return weekdays.get(currDayOfWeek);
     }
@@ -89,6 +91,7 @@ public class MainActivity extends AppCompatActivity
         return months.get(currMonth);
     }
     public void setup() {
+        updateCalendar(-2); //set cal back a day so it displays today's date
         months.put(Calendar.JANUARY, "January"); //KAD TODO make string values
         months.put(Calendar.FEBRUARY, "February");
         months.put(Calendar.MARCH, "March");
@@ -110,19 +113,24 @@ public class MainActivity extends AppCompatActivity
         weekdays.put(Calendar.FRIDAY, "Friday");
         weekdays.put(Calendar.SATURDAY, "Saturday");
 
-        //  System.out.println("Today is " + weekdays.get(currDayOfWeek) + "Month: " + months.get(currMonth) + "Day: " + currDayOfMonth );
-
-        //add activity
-        Random rng = new Random();
-        //int month = rng.nextInt(27) + 1;
-        int month = Calendar.MARCH;
-        int day = rng.nextInt(28) + 1;
-        int hour = rng.nextInt(24) + 1;
-        int minute = rng.nextInt(60) + 1;
-        saveEvent("Lunch", month, day, hour, minute, "Eat something healthy today!");
-
-
+        //addRandomActivity();
     }
+
+    private void addRandomActivity() {
+        //add random activity
+        String[] names = {"Alice", "Bob", "Cindy", "Dale", "Fred", "George", "Hannah"};
+
+        Random rng = new Random();
+        int month = rng.nextInt(11) + 1;
+        //int month = Calendar.MARCH;
+        int day = rng.nextInt(28) + 1;
+        //int hour = rng.nextInt(24) + 1;
+        int hour = 13;
+        int minute = rng.nextInt(60) + 1;
+        saveEvent("Meeting with " + names[rng.nextInt(names.length)], month, day, hour, minute, "Gonna be a good time!");
+        eventListAdapter.notifyDataSetChanged();
+    }
+
     static public void updateCalendar(int numDaysToAdd){
         calendar.add(Calendar.DAY_OF_MONTH, numDaysToAdd);
         currDayOfMonth = calendar.get(Calendar.DAY_OF_MONTH);
@@ -131,7 +139,7 @@ public class MainActivity extends AppCompatActivity
         //reset calendar
         calendar.add(Calendar.DAY_OF_MONTH, -numDaysToAdd);
     }
-////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -160,13 +168,13 @@ public class MainActivity extends AppCompatActivity
         addEventButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-              addActivityBtnPressed();
+                addEventBtnPressed();
             }
         });
         eventListAdapter.notifyDataSetChanged();
     }
 
-    public void addActivityBtnPressed(){
+    public void addEventBtnPressed(){
         Intent addEventIntent = new Intent(this, AddEventActivity.class);
         startActivityForResult(addEventIntent, ADD_EVENT_REQUEST);
     }
@@ -182,15 +190,43 @@ public class MainActivity extends AppCompatActivity
 
                 saveEvent(fields[0],Integer.valueOf(fields[1]),
                         Integer.valueOf(fields[2]), Integer.valueOf(fields[3]),
-                        Integer.valueOf(fields[4]), fields[5]); //KAD TODO idk
+                        Integer.valueOf(fields[4]), fields[5]);
 
             }
         }
+        else if (requestCode == DELETE_EVENT_REQUEST) {
+           // System.out.println("!!Okay we're deleting..******");
+            // Make sure the request was successful
+            if (resultCode == RESULT_OK) {
+
+                // The user wants to delete an event.
+       Long eventToDeleteId = data.getLongExtra("eventToBeDeletedId", 0);
+
+                System.out.println("!!Okay we're deleting... id = " + eventToDeleteId);
+
+                deleteEvent(eventToDeleteId);
+
+            }
+        }
+
+     eventListAdapter.notifyDataSetChanged();
+    }
+
+    private void deleteEvent(Long eventToDeleteId) {
+        //update list:
+        boolean result = eventList.remove(new Event(eventToDeleteId)); //KAD this is hacky
+        System.out.println("Did we remove?? -- " + result);
+
+        //Delete Event instance from eventDao
+        eventDao.deleteByKey(eventToDeleteId);
+
+        //Close and reopen database to ensure Guest object is deleted //idk
+        closeReopenDatabase();
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-      //KAD top action bar: month day
+        //KAD top action bar: month day
         getMenuInflater().inflate(R.menu.menu_main, menu);
 
         MenuItem month = menu.findItem(R.id.action_month);
@@ -220,7 +256,7 @@ public class MainActivity extends AppCompatActivity
 
         return super.onOptionsItemSelected(item);
     }
-////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
     /*Database helper methods*/
     private void initDatabase() {
         calendarDBHelper = new DaoMaster.DevOpenHelper(this, "ORM.sqlite", null);
@@ -235,20 +271,20 @@ public class MainActivity extends AppCompatActivity
         //Create DaoSession instance
         daoSession = daoMaster.newSession();
 
-        //From DaoSession instance, get instance of GuestDao
-        guestDao = daoSession.getEventDao();
+        //From DaoSession instance, get instance of eventDao
+        eventDao = daoSession.getEventDao();
 
-        if (guestDao.queryBuilder().where(
+        if (eventDao.queryBuilder().where(
                 EventDao.Properties.Display.eq(true)).list() == null)
         {
             //If list is null, then database tables were created for first time in
             // previous lines, so call "closeReopenDatabase()"
             closeReopenDatabase();
         }
-        //Get list of Guest objects in database using QueryBuilder
-        //HINT: All instances of Guest objects will have their Display property set equal to true
-        eventListFromDB = guestDao.queryBuilder().where(
-                EventDao.Properties.Display.eq(true)).list();
+        //Get list of Event objects in database using QueryBuilder
+        //HINT: All instances of Event objects will have their Display property set equal to true
+        eventListFromDB = eventDao.queryBuilder().where(
+                EventDao.Properties.Display.eq(true)).orderAsc(EventDao.Properties.StartHour).orderAsc(EventDao.Properties.StartMinute).list();
 
         //Add all Guest objects from List to guestList ArrayList and use
         //(cont.) "adapter.notifyDataSetChanged()" to update list
@@ -260,7 +296,7 @@ public class MainActivity extends AppCompatActivity
                 {
                     return;
                 }
-                Toast.makeText(context, "Added Guests from Database", Toast.LENGTH_SHORT).show();
+                //Toast.makeText(context, "Getting events from database...", Toast.LENGTH_SHORT).show();
                 eventList.add(event);
             }
             eventListAdapter.notifyDataSetChanged();
@@ -277,8 +313,8 @@ public class MainActivity extends AppCompatActivity
         //Create Event instance using provided data
         Event newEvent = new Event(rand.nextLong(), title, month, dayOfMonth, startHour, startMinute, description, true);
 
-        //Insert Event instance into guestDao
-        guestDao.insert(newEvent);
+        //Insert Event instance into eventDao
+        eventDao.insert(newEvent);
 
         //Close and reopen database to ensure Guest object is saved
         closeReopenDatabase();
@@ -306,11 +342,10 @@ public class MainActivity extends AppCompatActivity
         daoSession = daoMaster.newSession();
 
         //Create customer addition/removal instances
-        guestDao = daoSession.getEventDao();
-
+        eventDao = daoSession.getEventDao();
     }
 
-    public void getEventsByDay(){
+//    public void getEventsByDay(){
 //        listView.setAdapter(dudeAdapter);
 //        //Get list of Guest objects in database using QueryBuilder
 //        //HINT: All instances of Guest objects will have their Display property set equal to true
@@ -327,22 +362,39 @@ public class MainActivity extends AppCompatActivity
 //                {
 //                    return;
 //                }
-//                Toast.makeText(context, "Added Dudes from Database", Toast.LENGTH_SHORT).show();
+//              //  Toast.makeText(context, "Added Dudes from Database", Toast.LENGTH_SHORT).show();
 //                dudeList.add(guest.getFirstName() + " " + guest.getLastName());
 //            }
 //            dudeAdapter.notifyDataSetChanged();
 //        }
-    }
-
+//    }
 
     @Override
     public ArrayAdapter OnListViewed() {
         //adapter = eventListAdapter;
         return eventListAdapter;
-        //lv.setAdapter(eventListAdapter);
-        //System.out.println("hooray");
+
     }
 
+    @Override
+    public void onActResult(int requestCode, int resultCode, Intent data){
+        onActivityResult(requestCode, resultCode, data);
+    }
+
+    @Override
+    public void openEventPage(Event eventClicked){
+        Intent intent = new Intent(this, EventPageActivity.class);
+        //Give event page nicely formatted strings for title, date, time, and description
+        String[] displayStrings = {
+                eventClicked.getTitle(),
+                getDayOfWeekStr() + " " + getMonthStr() + " " + eventClicked.getDayOfMonth(),
+                String.format("%02d:%02d", eventClicked.getStartHour(),eventClicked.getStartMinute()),
+                eventClicked.getDescription()};
+        intent.putExtra("displayStrings", displayStrings);
+        intent.putExtra("eventId", eventClicked.getId());
+        this.startActivityForResult(intent, DELETE_EVENT_REQUEST);
+
+    }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
     /**
@@ -407,14 +459,13 @@ public class MainActivity extends AppCompatActivity
             mCallback = null;
         }
 
-         /**
+        /**
          * Each fragment has an offset from the current day's Month and Date
          */
         private static final String ARG_SECTION_NUMBER = "section number";
-        //KAD try
         ArrayAdapter tryAdapter;
-        private static final String ARG_LIST_ADAPTER = "list adapter";
-        //
+        ListView eventListView;
+        //private static final String ARG_LIST_ADAPTER = "list adapter";
         private int section_number;
 
         public DayViewFragment() {
@@ -440,16 +491,10 @@ public class MainActivity extends AppCompatActivity
         public void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
 
-                  if (getArguments() != null) {
+            if (getArguments() != null) {
                 section_number = getArguments().getInt(ARG_SECTION_NUMBER);
-                //tryAdapter = getArguments().get
             }
         }
-
-
-//    public ArrayAdapter getTryArrayAdapter() {
-//        return (ArrayAdapter) getArguments().getSerializable(FRAGMENT_BUNDLE_KEY);
-//    }
 
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -458,23 +503,30 @@ public class MainActivity extends AppCompatActivity
 
             MainActivity act = (MainActivity)getActivity().getParent();
             //update date:
-            Log.println(1, "*", "section number is: " + section_number); //TODO remove
-            act.updateCalendar(section_number);
+       //     Log.println(1, "*", "section number is: " + section_number); //TODO remove
+            act.updateCalendar(section_number-1); //KAD idk
 
 
             View rootView = inflater.inflate(R.layout.fragment_main, container, false);
             TextView textView = (TextView) rootView.findViewById(R.id.section_label);
             textView.setText("Events for " + getDayOfWeekStr() + ", " + getMonthStr() + " " + currDayOfMonth);
 
-            ListView eventListView = (ListView) rootView.findViewById(R.id.eventListView);
-            //KAD ahhhhhhhhhhhhhhhhh
+            eventListView = (ListView) rootView.findViewById(R.id.eventListView);
             tryAdapter = mCallback.OnListViewed();
-
-//KAD ahhhhhhhhhhh
             eventListView.setAdapter(tryAdapter);
             tryAdapter.notifyDataSetChanged();
 
+            eventListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position,
+                                        long id) {
 
+                    Event eventClicked = (Event)parent.getItemAtPosition(position);
+
+                    mCallback.openEventPage(eventClicked);
+
+                }
+            });
 
 
             return rootView;

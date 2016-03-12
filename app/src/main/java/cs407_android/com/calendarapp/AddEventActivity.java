@@ -64,6 +64,7 @@ public void submitEventBtnPressed(){
             descriptionStr};
     //ArrayList<String> eventFieldsList = new ArrayList<String>(Arrays.asList(eventFields));
 
+
     Intent intent = new Intent();
     intent.putExtra("eventFieldsList", eventFields);
     setResult(RESULT_OK, intent);
