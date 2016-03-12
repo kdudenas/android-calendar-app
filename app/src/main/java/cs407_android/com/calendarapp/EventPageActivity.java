@@ -69,7 +69,6 @@ public class EventPageActivity extends AppCompatActivity {
     }
 
     public void deleteBtnClicked(){
-        System.out.println("!!Delete button clicked: id = " + eventId);
         Intent intent = new Intent();
         intent.putExtra("eventToBeDeletedId", eventId);
         setResult(RESULT_OK, intent);

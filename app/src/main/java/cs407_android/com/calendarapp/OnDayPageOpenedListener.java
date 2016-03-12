@@ -10,6 +10,5 @@ import android.widget.ListView;
 // Container Activity must implement this interface
 public interface OnDayPageOpenedListener {
     public ArrayAdapter OnListViewed();
-    public void onActResult(int requestCode, int resultCode, Intent data);
     public void openEventPage(Event eventClicked);
 }
